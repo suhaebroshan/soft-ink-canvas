@@ -8,35 +8,46 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* Diary theme - warm, paper-like colors */
+    --background: 35 25% 96%;
+    --foreground: 30 15% 15%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card: 35 35% 98%;
+    --card-foreground: 30 15% 15%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover: 35 35% 98%;
+    --popover-foreground: 30 15% 15%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    --primary: 30 45% 40%;
+    --primary-foreground: 35 25% 98%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 35 20% 92%;
+    --secondary-foreground: 30 15% 20%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 35 20% 90%;
+    --muted-foreground: 30 10% 45%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 38 80% 60%;
+    --accent-foreground: 30 15% 15%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 70% 50%;
+    --destructive-foreground: 0 0% 98%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --border: 35 15% 88%;
+    --input: 35 15% 88%;
+    --ring: 30 45% 40%;
 
-    --radius: 0.5rem;
+    --radius: 0.75rem;
+    
+    /* Custom diary-specific tokens */
+    --paper-texture: 35 30% 94%;
+    --ink: 30 20% 25%;
+    --accent-warm: 38 80% 60%;
+    --shadow-soft: 30 25% 20%;
+    
+    /* Transitions */
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-bounce: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
 
     --sidebar-background: 0 0% 98%;
 
@@ -100,6 +111,69 @@ All colors MUST be HSL.
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-sans;
+  }
+  
+  /* TipTap Editor Styles */
+  .ProseMirror {
+    @apply focus:outline-none;
+  }
+  
+  .ProseMirror h1 {
+    @apply text-4xl font-bold font-serif mb-4 text-foreground;
+  }
+  
+  .ProseMirror h2 {
+    @apply text-3xl font-semibold font-serif mb-3 text-foreground;
+  }
+  
+  .ProseMirror h3 {
+    @apply text-2xl font-semibold font-serif mb-2 text-foreground;
+  }
+  
+  .ProseMirror p {
+    @apply mb-3 text-foreground leading-relaxed;
+  }
+  
+  .ProseMirror ul,
+  .ProseMirror ol {
+    @apply mb-3 pl-6;
+  }
+  
+  .ProseMirror ul {
+    @apply list-disc;
+  }
+  
+  .ProseMirror ol {
+    @apply list-decimal;
+  }
+  
+  .ProseMirror li {
+    @apply mb-1;
+  }
+  
+  .ProseMirror blockquote {
+    @apply border-l-4 border-primary pl-4 italic my-4 text-muted-foreground;
+  }
+  
+  .ProseMirror code {
+    @apply bg-muted px-1.5 py-0.5 rounded text-sm font-mono;
+  }
+  
+  .ProseMirror mark {
+    @apply bg-accent/50 px-1;
+  }
+  
+  .ProseMirror strong {
+    @apply font-semibold;
+  }
+  
+  .ProseMirror em {
+    @apply italic;
+  }
+  
+  /* Active button state for editor toolbar */
+  button[data-active="true"] {
+    @apply bg-accent text-accent-foreground;
   }
 }
