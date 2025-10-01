@@ -1,78 +1,106 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { DiaryEntry, EntryFilters } from '@/types/entry';
+import { dbService } from '@/lib/db';
 
 interface DiaryContextType {
   entries: DiaryEntry[];
   currentEntry: DiaryEntry | null;
+  isLoading: boolean;
   setCurrentEntry: (entry: DiaryEntry | null) => void;
-  addEntry: (entry: Omit<DiaryEntry, 'id' | 'date' | 'lastModified'>) => void;
-  updateEntry: (id: string, updates: Partial<DiaryEntry>) => void;
-  deleteEntry: (id: string) => void;
+  addEntry: (entry: Omit<DiaryEntry, 'id' | 'date' | 'lastModified'>) => Promise<void>;
+  updateEntry: (id: string, updates: Partial<DiaryEntry>) => Promise<void>;
+  deleteEntry: (id: string) => Promise<void>;
   searchEntries: (filters: EntryFilters) => DiaryEntry[];
+  refreshEntries: () => Promise<void>;
 }
 
 const DiaryContext = createContext<DiaryContextType | undefined>(undefined);
 
-const STORAGE_KEY = 'diary-entries';
-
 export const DiaryProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [entries, setEntries] = useState<DiaryEntry[]>([]);
   const [currentEntry, setCurrentEntry] = useState<DiaryEntry | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Load entries from localStorage on mount
-  useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored);
-        // Convert date strings back to Date objects
-        const entriesWithDates = parsed.map((entry: any) => ({
-          ...entry,
-          date: new Date(entry.date),
-          lastModified: new Date(entry.lastModified),
-        }));
-        setEntries(entriesWithDates);
-      } catch (error) {
-        console.error('Failed to load entries:', error);
-      }
+  // Load entries from IndexedDB on mount
+  const refreshEntries = async () => {
+    try {
+      setIsLoading(true);
+      const loadedEntries = await dbService.getAllEntries();
+      // Sort by date, newest first
+      loadedEntries.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      setEntries(loadedEntries);
+    } catch (error) {
+      console.error('Failed to load entries:', error);
+    } finally {
+      setIsLoading(false);
     }
+  };
+
+  useEffect(() => {
+    refreshEntries();
+
+    // Restore last session
+    const restoreSession = async () => {
+      const lastEntryId = await dbService.getSetting('lastOpenEntry');
+      if (lastEntryId) {
+        const entry = await dbService.getEntry(lastEntryId);
+        if (entry) {
+          setCurrentEntry(entry);
+        }
+      }
+    };
+
+    restoreSession();
   }, []);
 
-  // Save entries to localStorage whenever they change
+  // Save current entry ID for session restore
   useEffect(() => {
-    if (entries.length > 0) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+    if (currentEntry) {
+      dbService.setSetting('lastOpenEntry', currentEntry.id);
     }
-  }, [entries]);
+  }, [currentEntry?.id]);
 
-  const addEntry = (entry: Omit<DiaryEntry, 'id' | 'date' | 'lastModified'>) => {
+  const addEntry = async (entry: Omit<DiaryEntry, 'id' | 'date' | 'lastModified'>) => {
     const newEntry: DiaryEntry = {
       ...entry,
       id: crypto.randomUUID(),
       date: new Date(),
       lastModified: new Date(),
     };
+
+    await dbService.addEntry(newEntry);
     setEntries((prev) => [newEntry, ...prev]);
     setCurrentEntry(newEntry);
   };
 
-  const updateEntry = (id: string, updates: Partial<DiaryEntry>) => {
+  const updateEntry = async (id: string, updates: Partial<DiaryEntry>) => {
+    const existingEntry = entries.find((e) => e.id === id);
+    if (!existingEntry) return;
+
+    const updatedEntry: DiaryEntry = {
+      ...existingEntry,
+      ...updates,
+      lastModified: new Date(),
+    };
+
+    await dbService.updateEntry(updatedEntry);
+    
     setEntries((prev) =>
-      prev.map((entry) =>
-        entry.id === id
-          ? { ...entry, ...updates, lastModified: new Date() }
-          : entry
-      )
+      prev.map((entry) => (entry.id === id ? updatedEntry : entry))
     );
+
     if (currentEntry?.id === id) {
-      setCurrentEntry((prev) => (prev ? { ...prev, ...updates, lastModified: new Date() } : null));
+      setCurrentEntry(updatedEntry);
     }
   };
 
-  const deleteEntry = (id: string) => {
+  const deleteEntry = async (id: string) => {
+    await dbService.deleteEntry(id);
     setEntries((prev) => prev.filter((entry) => entry.id !== id));
+    
     if (currentEntry?.id === id) {
       setCurrentEntry(null);
+      await dbService.setSetting('lastOpenEntry', null);
     }
   };
 
@@ -117,11 +145,13 @@ export const DiaryProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       value={{
         entries,
         currentEntry,
+        isLoading,
         setCurrentEntry,
         addEntry,
         updateEntry,
         deleteEntry,
         searchEntries,
+        refreshEntries,
       }}
     >
       {children}

@@ -1,3 +1,4 @@
+import React from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Highlight from '@tiptap/extension-highlight';
@@ -24,6 +25,7 @@ interface RichTextEditorProps {
   content: string;
   onChange: (content: string) => void;
   placeholder?: string;
+  onSave?: () => void;
 }
 
 const MenuBar = ({ editor }: any) => {
@@ -181,7 +183,8 @@ const MenuBar = ({ editor }: any) => {
   );
 };
 
-export const RichTextEditor = ({ content, onChange, placeholder }: RichTextEditorProps) => {
+export const RichTextEditor = ({ content, onChange, placeholder, onSave }: RichTextEditorProps) => {
+  const [autoSaveTimer, setAutoSaveTimer] = React.useState<NodeJS.Timeout | null>(null);
   const editor = useEditor({
     extensions: [
       StarterKit,
@@ -191,7 +194,19 @@ export const RichTextEditor = ({ content, onChange, placeholder }: RichTextEdito
     ],
     content,
     onUpdate: ({ editor }) => {
-      onChange(editor.getHTML());
+      const newContent = editor.getHTML();
+      onChange(newContent);
+      
+      // Auto-save after 3 seconds of inactivity
+      if (onSave) {
+        if (autoSaveTimer) {
+          clearTimeout(autoSaveTimer);
+        }
+        const timer = setTimeout(() => {
+          onSave();
+        }, 3000);
+        setAutoSaveTimer(timer);
+      }
     },
     editorProps: {
       attributes: {
@@ -199,6 +214,15 @@ export const RichTextEditor = ({ content, onChange, placeholder }: RichTextEdito
       },
     },
   });
+
+  // Cleanup timer on unmount
+  React.useEffect(() => {
+    return () => {
+      if (autoSaveTimer) {
+        clearTimeout(autoSaveTimer);
+      }
+    };
+  }, [autoSaveTimer]);
 
   return (
     <div className="border border-border rounded-lg overflow-hidden bg-card shadow-sm">

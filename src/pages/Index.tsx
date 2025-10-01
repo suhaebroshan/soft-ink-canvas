@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { DiaryProvider, useDiary } from '@/contexts/DiaryContext';
 import { EntryCard } from '@/components/EntryCard';
 import { RichTextEditor } from '@/components/RichTextEditor';
+import { ExportImportDialog } from '@/components/ExportImportDialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { 
@@ -10,7 +11,8 @@ import {
   BookOpen, 
   X,
   Plus,
-  ArrowLeft
+  ArrowLeft,
+  Save
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useToast } from '@/hooks/use-toast';
@@ -24,20 +26,34 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { Badge } from '@/components/ui/badge';
 
 const DiaryContent = () => {
-  const { entries, currentEntry, setCurrentEntry, addEntry, updateEntry, deleteEntry, searchEntries } = useDiary();
+  const { entries, currentEntry, setCurrentEntry, addEntry, updateEntry, deleteEntry, searchEntries, isLoading } = useDiary();
   const [isEditing, setIsEditing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [editTitle, setEditTitle] = useState('');
   const [editContent, setEditContent] = useState('');
   const [editTags, setEditTags] = useState('');
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const { toast } = useToast();
 
   const filteredEntries = searchQuery
     ? searchEntries({ search: searchQuery })
     : entries;
+
+  // Restore editing state if there's a current entry
+  useEffect(() => {
+    if (currentEntry && !isEditing) {
+      setEditTitle(currentEntry.title);
+      setEditContent(currentEntry.content);
+      setEditTags(currentEntry.tags.join(', '));
+      setIsEditing(true);
+      setLastSaved(currentEntry.lastModified);
+    }
+  }, []);
 
   const handleNewEntry = () => {
     setEditTitle('');
@@ -45,6 +61,8 @@ const DiaryContent = () => {
     setEditTags('');
     setCurrentEntry(null);
     setIsEditing(true);
+    setLastSaved(null);
+    setHasUnsavedChanges(false);
   };
 
   const handleEditEntry = (entryId: string) => {
@@ -55,10 +73,41 @@ const DiaryContent = () => {
       setEditContent(entry.content);
       setEditTags(entry.tags.join(', '));
       setIsEditing(true);
+      setLastSaved(entry.lastModified);
+      setHasUnsavedChanges(false);
     }
   };
 
-  const handleSaveEntry = () => {
+  const handleAutoSave = async () => {
+    if (!editTitle.trim()) return;
+
+    const tags = editTags
+      .split(',')
+      .map((tag) => tag.trim())
+      .filter((tag) => tag.length > 0);
+
+    try {
+      if (currentEntry) {
+        await updateEntry(currentEntry.id, {
+          title: editTitle,
+          content: editContent,
+          tags,
+        });
+      } else {
+        await addEntry({
+          title: editTitle,
+          content: editContent,
+          tags,
+        });
+      }
+      setLastSaved(new Date());
+      setHasUnsavedChanges(false);
+    } catch (error) {
+      console.error('Auto-save failed:', error);
+    }
+  };
+
+  const handleSaveEntry = async () => {
     if (!editTitle.trim()) {
       toast({
         title: 'Title required',
@@ -73,44 +122,89 @@ const DiaryContent = () => {
       .map((tag) => tag.trim())
       .filter((tag) => tag.length > 0);
 
-    if (currentEntry) {
-      updateEntry(currentEntry.id, {
-        title: editTitle,
-        content: editContent,
-        tags,
-      });
+    try {
+      if (currentEntry) {
+        await updateEntry(currentEntry.id, {
+          title: editTitle,
+          content: editContent,
+          tags,
+        });
+        toast({
+          title: 'Entry updated',
+          description: 'Your diary entry has been saved',
+        });
+      } else {
+        await addEntry({
+          title: editTitle,
+          content: editContent,
+          tags,
+        });
+        toast({
+          title: 'Entry created',
+          description: 'Your new diary entry has been saved',
+        });
+      }
+
+      setLastSaved(new Date());
+      setHasUnsavedChanges(false);
+      setIsEditing(false);
+    } catch (error) {
       toast({
-        title: 'Entry updated',
-        description: 'Your diary entry has been saved',
-      });
-    } else {
-      addEntry({
-        title: editTitle,
-        content: editContent,
-        tags,
-      });
-      toast({
-        title: 'Entry created',
-        description: 'Your new diary entry has been saved',
+        title: 'Save failed',
+        description: 'Failed to save entry',
+        variant: 'destructive',
       });
     }
-
-    setIsEditing(false);
   };
 
-  const handleDeleteEntry = (entryId: string) => {
-    deleteEntry(entryId);
-    toast({
-      title: 'Entry deleted',
-      description: 'Your diary entry has been removed',
-    });
-    setDeleteConfirmId(null);
+  const handleDeleteEntry = async (entryId: string) => {
+    try {
+      await deleteEntry(entryId);
+      toast({
+        title: 'Entry deleted',
+        description: 'Your diary entry has been removed',
+      });
+      setDeleteConfirmId(null);
+    } catch (error) {
+      toast({
+        title: 'Delete failed',
+        description: 'Failed to delete entry',
+        variant: 'destructive',
+      });
+    }
   };
 
   const handleCancelEdit = () => {
     setIsEditing(false);
     setCurrentEntry(null);
+    setHasUnsavedChanges(false);
   };
+
+  const handleContentChange = (newContent: string) => {
+    setEditContent(newContent);
+    setHasUnsavedChanges(true);
+  };
+
+  const handleTitleChange = (newTitle: string) => {
+    setEditTitle(newTitle);
+    setHasUnsavedChanges(true);
+  };
+
+  const handleTagsChange = (newTags: string) => {
+    setEditTags(newTags);
+    setHasUnsavedChanges(true);
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <BookOpen className="h-12 w-12 text-primary mx-auto mb-4 animate-pulse" />
+          <p className="text-lg text-muted-foreground">Loading your diary...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -125,19 +219,22 @@ const DiaryContent = () => {
           >
             {/* Header */}
             <div className="mb-8">
-              <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
                 <div className="flex items-center gap-3">
                   <BookOpen className="h-8 w-8 text-primary" />
                   <h1 className="text-4xl font-serif font-bold text-foreground">My Diary</h1>
                 </div>
-                <Button
-                  onClick={handleNewEntry}
-                  size="lg"
-                  className="gap-2"
-                >
-                  <Plus className="h-5 w-5" />
-                  New Entry
-                </Button>
+                <div className="flex items-center gap-3">
+                  <ExportImportDialog />
+                  <Button
+                    onClick={handleNewEntry}
+                    size="lg"
+                    className="gap-2"
+                  >
+                    <Plus className="h-5 w-5" />
+                    New Entry
+                  </Button>
+                </div>
               </div>
 
               {/* Search */}
@@ -208,16 +305,24 @@ const DiaryContent = () => {
             className="container mx-auto px-4 py-8 max-w-4xl"
           >
             {/* Editor Header */}
-            <div className="mb-6 flex items-center justify-between">
-              <Button
-                variant="ghost"
-                onClick={handleCancelEdit}
-                className="gap-2"
-              >
-                <ArrowLeft className="h-4 w-4" />
-                Back to entries
-              </Button>
-              <Button onClick={handleSaveEntry} size="lg">
+            <div className="mb-6 flex items-center justify-between flex-wrap gap-4">
+              <div className="flex items-center gap-3">
+                <Button
+                  variant="ghost"
+                  onClick={handleCancelEdit}
+                  className="gap-2"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  Back to entries
+                </Button>
+                {lastSaved && (
+                  <Badge variant="secondary" className="text-xs">
+                    {hasUnsavedChanges ? 'Auto-saving...' : `Saved ${lastSaved.toLocaleTimeString()}`}
+                  </Badge>
+                )}
+              </div>
+              <Button onClick={handleSaveEntry} size="lg" className="gap-2">
+                <Save className="h-4 w-4" />
                 Save Entry
               </Button>
             </div>
@@ -227,7 +332,7 @@ const DiaryContent = () => {
               type="text"
               placeholder="Entry title..."
               value={editTitle}
-              onChange={(e) => setEditTitle(e.target.value)}
+              onChange={(e) => handleTitleChange(e.target.value)}
               className="mb-4 text-2xl font-serif font-semibold h-14 bg-card"
             />
 
@@ -236,14 +341,15 @@ const DiaryContent = () => {
               type="text"
               placeholder="Tags (comma separated)..."
               value={editTags}
-              onChange={(e) => setEditTags(e.target.value)}
+              onChange={(e) => handleTagsChange(e.target.value)}
               className="mb-6 bg-card"
             />
 
-            {/* Rich Text Editor */}
+            {/* Rich Text Editor with Auto-save */}
             <RichTextEditor
               content={editContent}
-              onChange={setEditContent}
+              onChange={handleContentChange}
+              onSave={handleAutoSave}
               placeholder="Start writing your thoughts..."
             />
           </motion.div>
