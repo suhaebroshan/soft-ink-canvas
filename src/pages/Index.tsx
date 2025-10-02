@@ -1,11 +1,15 @@
 import { useState, useEffect } from 'react';
 import { DiaryProvider, useDiary } from '@/contexts/DiaryContext';
+import { useTheme } from '@/contexts/ThemeContext';
 import { EntryCard } from '@/components/EntryCard';
 import { RichTextEditor } from '@/components/RichTextEditor';
 import { ExportImportDialog } from '@/components/ExportImportDialog';
+import { LiquidGlassBackground } from '@/components/LiquidGlassBackground';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { 
   PenLine, 
   Search, 
@@ -13,10 +17,16 @@ import {
   X,
   Plus,
   ArrowLeft,
-  Save
+  Save,
+  Sparkles
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useToast } from '@/hooks/use-toast';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -31,6 +41,7 @@ import { Badge } from '@/components/ui/badge';
 
 const DiaryContent = () => {
   const { entries, currentEntry, setCurrentEntry, addEntry, updateEntry, deleteEntry, searchEntries, isLoading } = useDiary();
+  const { glassTheme, toggleGlassTheme, backgroundEnabled, toggleBackground } = useTheme();
   const [isEditing, setIsEditing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [editTitle, setEditTitle] = useState('');
@@ -208,7 +219,8 @@ const DiaryContent = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background relative">
+      {backgroundEnabled && <LiquidGlassBackground />}
       <AnimatePresence mode="wait">
         {!isEditing ? (
           <motion.div
@@ -226,6 +238,50 @@ const DiaryContent = () => {
                   <h1 className="text-4xl font-serif font-bold text-foreground">My Diary</h1>
                 </div>
                 <div className="flex items-center gap-3">
+                  <Popover>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <PopoverTrigger asChild>
+                          <Button variant="outline" size="lg" className="gap-2">
+                            <Sparkles className="h-4 w-4" />
+                            Theme
+                          </Button>
+                        </PopoverTrigger>
+                      </TooltipTrigger>
+                      <TooltipContent>Customize appearance</TooltipContent>
+                    </Tooltip>
+                    <PopoverContent className="w-64">
+                      <div className="space-y-4">
+                        <h3 className="font-semibold">Appearance</h3>
+                        <div className="flex items-center justify-between">
+                          <Label htmlFor="glass-theme" className="flex flex-col gap-1">
+                            <span>Liquid Glass</span>
+                            <span className="text-xs text-muted-foreground font-normal">
+                              Frosted glass effect
+                            </span>
+                          </Label>
+                          <Switch
+                            id="glass-theme"
+                            checked={glassTheme}
+                            onCheckedChange={toggleGlassTheme}
+                          />
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <Label htmlFor="background" className="flex flex-col gap-1">
+                            <span>Animated Background</span>
+                            <span className="text-xs text-muted-foreground font-normal">
+                              WebGL liquid effect
+                            </span>
+                          </Label>
+                          <Switch
+                            id="background"
+                            checked={backgroundEnabled}
+                            onCheckedChange={toggleBackground}
+                          />
+                        </div>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
                   <ExportImportDialog />
                   <Tooltip>
                     <TooltipTrigger asChild>

@@ -1,9 +1,15 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Highlight from '@tiptap/extension-highlight';
 import { TextStyle } from '@tiptap/extension-text-style';
 import { Color } from '@tiptap/extension-color';
+import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
+import { createLowlight } from 'lowlight';
+import javascript from 'highlight.js/lib/languages/javascript';
+import typescript from 'highlight.js/lib/languages/typescript';
+import html from 'highlight.js/lib/languages/xml';
+import css from 'highlight.js/lib/languages/css';
 import { 
   Bold, 
   Italic, 
@@ -16,11 +22,29 @@ import {
   Quote,
   Undo,
   Redo,
-  Highlighter
+  Highlighter,
+  FileCode,
+  Play
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+
+// Setup syntax highlighting
+const lowlight = createLowlight();
+lowlight.register('javascript', javascript);
+lowlight.register('typescript', typescript);
+lowlight.register('html', html);
+lowlight.register('css', css);
 
 interface RichTextEditorProps {
   content: string;
@@ -30,12 +54,31 @@ interface RichTextEditorProps {
 }
 
 const MenuBar = ({ editor }: any) => {
+  const [embedDialogOpen, setEmbedDialogOpen] = useState(false);
+  const [embedCode, setEmbedCode] = useState('');
+  const [embedLanguage, setEmbedLanguage] = useState('html');
+
   if (!editor) {
     return null;
   }
 
   const buttonClass = "h-8 w-8 p-0";
-  const activeClass = "bg-accent";
+
+  const handleInsertCodeBlock = () => {
+    editor.chain().focus().toggleCodeBlock().run();
+  };
+
+  const handleInsertEmbed = () => {
+    if (embedCode.trim()) {
+      editor.chain().focus().insertContent({
+        type: 'codeBlock',
+        attrs: { language: embedLanguage },
+        content: [{ type: 'text', text: embedCode }],
+      }).run();
+      setEmbedCode('');
+      setEmbedDialogOpen(false);
+    }
+  };
 
   return (
     <div className="border-b border-border bg-card px-4 py-2 flex items-center gap-1 flex-wrap sticky top-0 z-10">
@@ -215,6 +258,76 @@ const MenuBar = ({ editor }: any) => {
             variant="ghost"
             size="sm"
             className={buttonClass}
+            onClick={handleInsertCodeBlock}
+            data-active={editor.isActive('codeBlock')}
+            aria-label="Code Block"
+          >
+            <FileCode className="h-4 w-4" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>Code Block</TooltipContent>
+      </Tooltip>
+
+      <Dialog open={embedDialogOpen} onOpenChange={setEmbedDialogOpen}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <DialogTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className={buttonClass}
+                aria-label="Live Embed"
+              >
+                <Play className="h-4 w-4" />
+              </Button>
+            </DialogTrigger>
+          </TooltipTrigger>
+          <TooltipContent>Insert Live HTML/CSS/JS</TooltipContent>
+        </Tooltip>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Insert Live Code Embed</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="language">Language</Label>
+              <select
+                id="language"
+                value={embedLanguage}
+                onChange={(e) => setEmbedLanguage(e.target.value)}
+                className="w-full mt-1 px-3 py-2 border rounded-md bg-background"
+              >
+                <option value="html">HTML</option>
+                <option value="css">CSS</option>
+                <option value="javascript">JavaScript</option>
+                <option value="typescript">TypeScript</option>
+              </select>
+            </div>
+            <div>
+              <Label htmlFor="code">Code</Label>
+              <Textarea
+                id="code"
+                value={embedCode}
+                onChange={(e) => setEmbedCode(e.target.value)}
+                placeholder="Paste your code here..."
+                className="mt-1 font-mono text-sm min-h-[200px]"
+              />
+            </div>
+            <Button onClick={handleInsertEmbed} className="w-full">
+              Insert Code Block
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Separator orientation="vertical" className="h-6 mx-1" />
+
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant="ghost"
+            size="sm"
+            className={buttonClass}
             onClick={() => editor.chain().focus().undo().run()}
             disabled={!editor.can().chain().focus().undo().run()}
             aria-label="Undo"
@@ -248,7 +361,15 @@ export const RichTextEditor = ({ content, onChange, placeholder, onSave }: RichT
   const [autoSaveTimer, setAutoSaveTimer] = React.useState<NodeJS.Timeout | null>(null);
   const editor = useEditor({
     extensions: [
-      StarterKit,
+      StarterKit.configure({
+        codeBlock: false, // Disable default code block
+      }),
+      CodeBlockLowlight.configure({
+        lowlight,
+        HTMLAttributes: {
+          class: 'hljs',
+        },
+      }),
       Highlight.configure({ multicolor: true }),
       TextStyle,
       Color,
@@ -271,7 +392,7 @@ export const RichTextEditor = ({ content, onChange, placeholder, onSave }: RichT
     },
     editorProps: {
       attributes: {
-        class: 'prose prose-sm sm:prose lg:prose-lg xl:prose-xl max-w-none focus:outline-none min-h-[500px] p-6 font-serif',
+        class: 'prose prose-sm sm:prose lg:prose-lg xl:prose-xl max-w-none focus:outline-none min-h-[500px] p-6 font-serif hljs-container',
       },
     },
   });

@@ -48,6 +48,12 @@ All colors MUST be HSL.
     /* Transitions */
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     --transition-bounce: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    
+    /* Glass theme tokens */
+    --glass-bg: hsla(35, 25%, 96%, 0.7);
+    --glass-border: hsla(35, 15%, 88%, 0.3);
+    --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
+    --glass-blur: blur(10px);
 
     --sidebar-background: 0 0% 98%;
 
@@ -175,5 +181,41 @@ All colors MUST be HSL.
   /* Active button state for editor toolbar */
   button[data-active="true"] {
     @apply bg-accent text-accent-foreground;
+  }
+  
+  /* Glass theme styles */
+  .glass-theme .bg-card,
+  .glass-theme .bg-background {
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border-color: var(--glass-border);
+    box-shadow: var(--glass-shadow);
+  }
+  
+  .glass-theme input,
+  .glass-theme textarea {
+    background: hsla(35, 35%, 98%, 0.6);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+  }
+  
+  .glass-theme button:not(.bg-primary):not(.bg-destructive) {
+    background: hsla(35, 20%, 92%, 0.8);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+  }
+  
+  /* Code block syntax highlighting */
+  .hljs-container pre {
+    @apply bg-muted/50 rounded-lg p-4 overflow-x-auto my-4;
+  }
+  
+  .hljs-container code {
+    @apply font-mono text-sm;
+  }
+  
+  .hljs {
+    @apply bg-transparent;
   }
 }
