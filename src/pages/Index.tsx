@@ -5,6 +5,7 @@ import { RichTextEditor } from '@/components/RichTextEditor';
 import { ExportImportDialog } from '@/components/ExportImportDialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { 
   PenLine, 
   Search, 
@@ -226,14 +227,19 @@ const DiaryContent = () => {
                 </div>
                 <div className="flex items-center gap-3">
                   <ExportImportDialog />
-                  <Button
-                    onClick={handleNewEntry}
-                    size="lg"
-                    className="gap-2"
-                  >
-                    <Plus className="h-5 w-5" />
-                    New Entry
-                  </Button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        onClick={handleNewEntry}
+                        size="lg"
+                        className="gap-2"
+                      >
+                        <Plus className="h-5 w-5" />
+                        New Entry
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Create a new diary entry</TooltipContent>
+                  </Tooltip>
                 </div>
               </div>
 
@@ -248,14 +254,19 @@ const DiaryContent = () => {
                   className="pl-10 bg-card"
                 />
                 {searchQuery && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 p-0"
-                    onClick={() => setSearchQuery('')}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 p-0"
+                        onClick={() => setSearchQuery('')}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Clear search</TooltipContent>
+                  </Tooltip>
                 )}
               </div>
             </div>
@@ -307,24 +318,34 @@ const DiaryContent = () => {
             {/* Editor Header */}
             <div className="mb-6 flex items-center justify-between flex-wrap gap-4">
               <div className="flex items-center gap-3">
-                <Button
-                  variant="ghost"
-                  onClick={handleCancelEdit}
-                  className="gap-2"
-                >
-                  <ArrowLeft className="h-4 w-4" />
-                  Back to entries
-                </Button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      onClick={handleCancelEdit}
+                      className="gap-2"
+                    >
+                      <ArrowLeft className="h-4 w-4" />
+                      Back to entries
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Return to diary entries list</TooltipContent>
+                </Tooltip>
                 {lastSaved && (
                   <Badge variant="secondary" className="text-xs">
                     {hasUnsavedChanges ? 'Auto-saving...' : `Saved ${lastSaved.toLocaleTimeString()}`}
                   </Badge>
                 )}
               </div>
-              <Button onClick={handleSaveEntry} size="lg" className="gap-2">
-                <Save className="h-4 w-4" />
-                Save Entry
-              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button onClick={handleSaveEntry} size="lg" className="gap-2">
+                    <Save className="h-4 w-4" />
+                    Save Entry
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Save this diary entry</TooltipContent>
+              </Tooltip>
             </div>
 
             {/* Title Input */}
